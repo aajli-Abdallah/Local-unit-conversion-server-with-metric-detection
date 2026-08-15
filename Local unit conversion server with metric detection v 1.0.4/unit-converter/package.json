@@ -1,0 +1,13 @@
+{
+  "name": "unit-converter",
+  "version": "1.0.0",
+  "description": "Local server that detects a unit in free text and converts it across every related unit.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "MIT"
+}

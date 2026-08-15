@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Convert — unit reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14181c;
+    --panel: #1b2126;
+    --panel-2: #1f262c;
+    --line: #2b333a;
+    --bone: #e9e6df;
+    --bone-dim: #9aa2a9;
+    --brass: #c9a227;
+    --brass-dim: #8a7326;
+    --teal: #4fa8a0;
+    --warn: #d97757;
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(201,162,39,0.06), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(79,168,160,0.05), transparent 40%),
+      var(--bg);
+    color: var(--bone);
+    font-family: 'Inter', sans-serif;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 64px 20px 80px;
+    min-height:100%;
+  }
+  .wrap{ width:100%; max-width: 640px; }
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--brass);
+    text-transform: uppercase;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom: 14px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:7px; height:7px; border-radius:50%;
+    background: var(--brass);
+    box-shadow: 0 0 8px 1px rgba(201,162,39,0.7);
+  }
+
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+  }
+  p.lead{
+    color: var(--bone-dim);
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 36px;
+    max-width: 46ch;
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    position: relative;
+    overflow:hidden;
+  }
+  .panel::before{
+    /* subtle engraved corner bracket, instrument-panel feel */
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, rgba(201,162,39,0.35), transparent);
+  }
+
+  form{ display:flex; gap:10px; }
+
+  .input-slot{
+    flex:1;
+    position:relative;
+  }
+  input[type="text"]{
+    width:100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 15px 16px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--bone);
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type="text"]::placeholder{ color:#5b636a; }
+  input[type="text"]:focus{
+    border-color: var(--brass-dim);
+    box-shadow: 0 0 0 3px rgba(201,162,39,0.12);
+  }
+
+  button.go{
+    font-family:'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--brass);
+    color: #1a1500;
+    border: none;
+    border-radius: 8px;
+    padding: 0 22px;
+    cursor: pointer;
+    transition: filter .15s ease, transform .05s ease;
+  }
+  button.go:hover{ filter: brightness(1.08); }
+  button.go:active{ transform: translateY(1px); }
+  button.go:focus-visible{ outline: 2px solid var(--bone); outline-offset:2px; }
+
+  .chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top: 16px;
+  }
+  .chip{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--bone-dim);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .chip:hover{ border-color: var(--brass-dim); color: var(--bone); }
+
+  /* ruler divider — the signature element */
+  .ruler{
+    height: 22px;
+    margin: 26px 0 20px;
+    position: relative;
+    display:flex;
+    align-items:flex-end;
+    gap: 0;
+  }
+  .ruler .tick{
+    flex:1;
+    border-left: 1px solid var(--line);
+    height: 8px;
+    align-self:flex-end;
+  }
+  .ruler .tick:nth-child(5n+1){ height: 14px; border-left-color: #3a444c; }
+  .ruler-fill{
+    position:absolute;
+    left:0; bottom:0; top:0;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(201,162,39,0.16), rgba(201,162,39,0));
+    transition: width .5s cubic-bezier(.2,.9,.25,1);
+    pointer-events:none;
+  }
+
+  .status{ min-height: 20px; margin-bottom: 6px; }
+  .status .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--teal);
+    letter-spacing: 0.03em;
+  }
+  .status .badge .dot{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--teal);
+  }
+  .status .error{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--warn);
+  }
+
+  .results{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  @media (max-width: 480px){
+    .results{ grid-template-columns: 1fr; }
+  }
+
+  .result-row{
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+  }
+  .result-row.source{
+    border-color: var(--brass-dim);
+    background: linear-gradient(90deg, rgba(201,162,39,0.08), rgba(201,162,39,0.02));
+  }
+  .result-row.source::before{
+    content:"◆";
+    color: var(--brass);
+    font-size: 10px;
+    margin-right: 8px;
+  }
+  .r-label{
+    font-size: 13px;
+    color: var(--bone-dim);
+  }
+  .result-row.source .r-label{ color: var(--bone); }
+  .r-value{
+    font-family:'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--bone);
+    white-space: nowrap;
+  }
+  .r-unit{
+    font-family:'JetBrains Mono', monospace;
+    color: var(--bone-dim);
+    font-size: 12px;
+    margin-left: 4px;
+  }
+
+  .empty{
+    color: var(--bone-dim);
+    font-size: 13.5px;
+    padding: 30px 4px 6px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  footer{
+    margin-top: 22px;
+    font-size: 12px;
+    color: #5b636a;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .ruler-fill{ transition:none; }
+  }
+
+  .version-tag{
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #4a545c;
+    letter-spacing: 0.03em;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Local · No Tracking · Instant Read</div>
+    <h1>Convert</h1>
+    <p class="lead">Type a number with a unit — feet, kg, °F, liters, mph, whatever — and it reads the unit off the text and lays out every equivalent.</p>
+
+    <div class="panel">
+      <form id="form" autocomplete="off">
+        <div class="input-slot">
+          <input type="text" id="text-input" name="text" placeholder="e.g. 50 feet" value="50 feet" autocomplete="off" />
+        </div>
+        <button type="submit" class="go">Convert</button>
+      </form>
+
+      <div class="chips">
+        <div class="chip" data-value="50 feet">50 feet</div>
+        <div class="chip" data-value="98.6 F">98.6 F</div>
+        <div class="chip" data-value="2 liters">2 liters</div>
+        <div class="chip" data-value="5 kg">5 kg</div>
+        <div class="chip" data-value="60 mph">60 mph</div>
+        <div class="chip" data-value="1 acre">1 acre</div>
+        <div class="chip" data-value="3 cubic meters">3 cubic meters</div>
+        <div class="chip" data-value="10 cubic feet">10 cubic feet</div>
+        <div class="chip" data-value="32 psi">32 psi</div>
+      </div>
+
+      <div class="ruler" id="ruler">
+        <div class="ruler-fill" id="ruler-fill"></div>
+        <!-- ticks injected by JS -->
+      </div>
+
+      <div class="status" id="status"></div>
+      <div class="results" id="results"></div>
+      <div class="empty" id="empty" style="display:none;">Nothing to show yet — enter a value above.</div>
+    </div>
+
+    <footer>Runs entirely on localhost · length · weight · volume · cubic volume · temperature · speed · area · pressure · energy · data</footer>
+  </div>
+
+<script>
+  const form = document.getElementById('form');
+  const inputEl = document.getElementById('text-input');
+  const statusEl = document.getElementById('status');
+  const resultsEl = document.getElementById('results');
+  const emptyEl = document.getElementById('empty');
+  const rulerFill = document.getElementById('ruler-fill');
+  const ruler = document.getElementById('ruler');
+
+  // build ruler ticks
+  for (let i = 0; i < 40; i++) {
+    const t = document.createElement('div');
+    t.className = 'tick';
+    ruler.appendChild(t);
+  }
+
+  const SCALES = [
+    { value: 1e12, suffix: 'Trillion' },
+    { value: 1e9,  suffix: 'Billion' },
+    { value: 1e6,  suffix: 'Million' },
+  ];
+
+  function formatNumber(n) {
+    if (!isFinite(n)) return '—';
+    const abs = Math.abs(n);
+
+    for (const scale of SCALES) {
+      if (abs >= scale.value) {
+        const scaled = n / scale.value;
+        const decimals = Math.abs(scaled) >= 100 ? 1 : 2;
+        let s = scaled.toFixed(decimals);
+        s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+        return `${s} ${scale.suffix}`;
+      }
+    }
+
+    const decimals = abs >= 100 ? 2 : abs >= 1 ? 4 : 6;
+    let s = n.toFixed(decimals);
+    s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+    const parts = s.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+
+  // Full precise value with thousands separators, for a hover tooltip on large numbers.
+  function formatExact(n) {
+    if (!isFinite(n)) return '';
+    const parts = n.toFixed(6).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+
+  async function convert(text) {
+    statusEl.innerHTML = '';
+    resultsEl.innerHTML = '';
+    emptyEl.style.display = 'none';
+    rulerFill.style.width = '0%';
+
+    if (!text || !text.trim()) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    let data;
+    try {
+      const res = await fetch('/api/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      data = await res.json();
+    } catch (e) {
+      statusEl.innerHTML = '<span class="error">Could not reach the server. Is it running?</span>';
+      return;
+    }
+
+    if (!data.ok) {
+      statusEl.innerHTML = `<span class="error">⚠ ${escapeHtml(data.error)}</span>`;
+      return;
+    }
+
+    const { detected, conversion } = data;
+    statusEl.innerHTML = `
+      <span class="badge">
+        <span class="dot"></span>
+        Detected ${escapeHtml(detected.unitLabel)} → ${escapeHtml(detected.categoryLabel)}
+      </span>
+    `;
+    rulerFill.style.width = '100%';
+
+    conversion.results.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'result-row' + (r.isSource ? ' source' : '');
+      const abbreviated = Math.abs(r.value) >= 1e6;
+      const titleAttr = abbreviated ? ` title="${escapeHtml(formatExact(r.value))} ${escapeHtml(r.unit)}"` : '';
+      row.innerHTML = `
+        <span class="r-label">${escapeHtml(r.label)}</span>
+        <span${titleAttr}><span class="r-value">${formatNumber(r.value)}</span><span class="r-unit">${escapeHtml(r.unit)}</span></span>
+      `;
+      resultsEl.appendChild(row);
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]));
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    convert(inputEl.value);
+  });
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      inputEl.value = chip.dataset.value;
+      convert(inputEl.value);
+    });
+  });
+
+  // run on load — prefer a ?text= query param (used by the right-click extension),
+  // otherwise fall back to the default example value already in the input.
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get('text');
+  if (fromQuery) {
+    inputEl.value = fromQuery;
+  }
+  convert(inputEl.value);
+</script>
+<div class="version-tag">v1.0.4</div>
+</body>
+</html>
